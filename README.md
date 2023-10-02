@@ -15,6 +15,8 @@ Voici quelques-uns des avantages de l'utilisation de Tkinter Designer :
 Si vous êtes un développeur Python et que vous recherchez un outil pour créer des interfaces graphiques rapidement et facilement, Tkinter Designer est un excellent choix.
 
 **Contact**:
-**WhatsApp et Mobile**: +243 999 794 391 <br/>
+***WhatsApp et Mobile**: +243 999 794 391 <br/>
+
 **Facebook**: *Adonis Rwabira/ Adonis Bitigaywa*
+
 **E-mail**: *adonisbitigaywa@gmail.com*
