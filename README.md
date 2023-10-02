@@ -17,6 +17,6 @@ Si vous êtes un développeur Python et que vous recherchez un outil pour créer
 **Contact**:
 * **WhatsApp et Mobile**: +243 999 794 391 <br/>
 
-* **Facebook**: *Adonis Rwabira/ Adonis Bitigaywa*
+* **Facebook**: *Adonis Rwabira / Adonis Bitigaywa*
 
-* **E-mail**: *adonisbitigaywa@gmail.com*
+* **E-mail**: adonisbitigaywa@gmail.com
