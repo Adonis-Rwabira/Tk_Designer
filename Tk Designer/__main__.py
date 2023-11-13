@@ -1,23 +1,29 @@
-from tkinter import*
-from json import dump, load
-from pickle import dump as dumps, load as loads
+try: import compile as comp
+except: pass
+
 from tkinter import font
-import tkinter as tk
+from tkinter.filedialog import askopenfilename, asksaveasfile
 import tkinter.ttk as ttk
 import tkinter.tix as tix
-import os, sys, re, pickle, Pmw
-import customtkinter as customTk
+from tkinter.tix import*
+from customtkinter import*
+from tkinter import*
+from runpy import run_path
+from json import dump, load
+from py_compile import compile
+from os.path import basename, dirname, exists
 import idlelib.colorizer as ic
 import idlelib.percolator as ip
-from os.path import dirname
 from os import chdir, getcwd, listdir, remove
 from tree import FileTreeItem, TreeNode
 from xml.etree import ElementTree as Et
 from tkinter.colorchooser import askcolor
+from pickle import dump as dumps, load as loads
 from tkinter.ttk import Style, Separator, Treeview
-from tkinter.messagebox import askyesno, showinfo, showwarning
-showinfo(message=__file__)
-class Fenetre(customTk.CTkToplevel, tix.Tk):
+import sys, re, pickle, tkinter, customtkinter, Pmw
+from tkinter.messagebox import askyesno, showerror, showinfo, showwarning
+
+class Fenetre(CTkToplevel, tix.Tk):
     def __init__(self, master):
         super().__init__(master, class_="fenetre")
         self.title("Fenêtre")
@@ -28,58 +34,131 @@ class Fenetre(customTk.CTkToplevel, tix.Tk):
 class TextIO:
     flush = lambda x: None
 
-    def __init__(self, textbox, std, tags=None) -> None:
+    def __init__(self, textbox, std, app, tags=None):
         self.std = std
-        self.file = open("Tk Designer out.txt", "a")
         self.textbox = textbox
         self.tags = tags
+        self.app = app
 
     def write(self, text):
-        self.std.write(text)
-        self.file.write(text)
-        self.textbox.config(state="n")
+        not self.std or self.std.write(text)
+        self.textbox.config(state="normal")
         self.textbox.insert(END, text, self.tags)
-        self.textbox.yview_moveto(1)
-        self.textbox.config(state="d")
+        self.textbox.config(state="disable")
 
-class TkGuiBuilder(customTk.CTk):
+        self.textbox.yview_moveto(1)
+        self.app.H_Splitter.panecget(self.app.message_Frame, "height") or self.app.H_Splitter.sash_place(0, 0, self.app.message_box_height.get())
+
+class TkGuiBuilder(CTk):
+    
     def __init__(self):
         super().__init__()
 
         self.title("Tk Gui Builder")
-        self.configure(fg_color=("light sky blue", "gray15"))
+        self.configure(fg_color=("gray95", "gray15"))
         self.maxsize(self.winfo_screenwidth()-10, self.winfo_screenheight())
         self.geometry(f"{self.winfo_screenwidth() - 10}x{self.winfo_screenheight() - 100}+0+0")
 
         # Dark Mode
-        customTk.set_appearance_mode("dark")
-        self._set_appearance_mode
+        set_appearance_mode("dark")
+
+        # le Menu
+        self.menu = Menu(
+            self,
+            title = "Main menu",
+            font=("Arial", 12),
+            tearoff=0,
+            type="tearof"
+        )
+        
+        self.configure(menu=self.menu)
+
+        self.file_menu = Menu(
+            self.menu,
+            tearoff=0,
+            font=("Arial", 11), 
+            background=self["background"],
+            foreground=self._apply_appearance_mode(("black", "white")),
+            activebackground=self._apply_appearance_mode(("gray60", "gray30")),
+        )
+
+        self.file_menu.add_command(label="Nouveau", command=lambda: self.open_file(True), accelerator="Ctrl-N")
+        self.file_menu.add_command(label="Ouvrir", command=self.open_file, accelerator="Ctrl-O")
+        self.file_menu.add_command(label="Enregistrer", command=self.save_files, accelerator="Ctrl-S")
+        self.file_menu.add_command(label="Enregistrer sous")
+
+        self.file_menu.add_separator()
+
+        self.file_menu.add_command(label="Exporter vers HTML")
+        self.file_menu.add_command(label="Exporter vers Figma")
+        self.file_menu.add_command(label="Exporter vers Adobe XD")
+
+        self.file_menu.add_separator()
+
+        self.file_menu.add_command(label="Partager")
+        self.file_menu.add_command(label="Imprimer")
+        self.file_menu.add_command(label="Quitter", command=self.destroy)
+
+        self.recent_files_menu = Menu(
+            self.file_menu,
+            tearoff=0
+        )
+        
+        self.open_file_menu = Menu(
+            self.file_menu,
+            tearoff=0, font=("Arial",11),
+            background=self["background"],
+            foreground=self._apply_appearance_mode(("black", "white"))
+        )
+        
+        self.open_file_menu.add_command(label="Fichier")
+        self.open_file_menu.add_command(label="Projet")
+        self.open_file_menu.add_cascade(label="Fichiers récents", menu=self.recent_files_menu)
+
+        self.debug_menu = Menu(
+            self.menu,
+            tearoff=0,
+            font=("Arial", 11), 
+            background=self["background"],
+            foreground=self._apply_appearance_mode(("black", "white"))
+        )
+
+        self.debug_menu.add_command(label="Deboger", command=lambda: self.event_generate("<F5>"), accelerator="F5")
+
+        self.menu.add_cascade(label="    Fichier  ", menu=self.file_menu)
+        self.menu.add_cascade(label="  Edition  ")
+        self.menu.add_cascade(label="  Affichage  ")
+        self.menu.add_cascade(label="  Débogage  ", menu=self.debug_menu)
+        self.menu.add_cascade(label="  Projet  ")
+        self.menu.add_cascade(label="  Fénêtres  ")
+        self.menu.add_cascade(label="  Options  ")
+        self.menu.add_cascade(label="  Aide  ")
 
         # Definition des evenements
         self.bind("<Any-KeyPress>", self.key_combination)
 
         self.style = Style()
         self.style.theme_use("vista")
-        #self.option_readfile(dirname(__file__)+r"\Tk_Gui.TkSS")
 
-        self.tabview =  customTk.CTkTabview(
+        self.tabview = CTkTabview(
             self,
             height=30,
-            fg_color=("LightSkyBlue", "gray15"),
+            fg_color=("gray90", "gray15"),
             bg_color=self._fg_color,
-            font=("Segoe UI", 15),
+            font=("Segoe UI", 16),
             border_width=1,
-            corner_radius=10,
+            corner_radius=5,
             corner_bt_radius=20,
             border_color=("black", "gray0"),
             text_color=("black", "white"),
-            segmented_button_selected_color=("white", "gray10"),
-            segmented_button_unselected_color=("DeepSkyBlue2", "gray20"),
-            segmented_button_fg_color=("DeepSkyBlue2", "gray20"),
-            segmented_button_selected_hover_color="gray10",
+            segmented_button_selected_color=("white", "gray20"),
+            segmented_button_unselected_color=("gray80", "gray10"),
+            segmented_button_fg_color=("gray80", "gray10"),
+            segmented_button_selected_hover_color="gray20",
             segmented_button_unselected_hover_color="gray15",
             command=lambda: self.selected_widget.set("arrow"),
         )
+        
         self.tabview.pack(padx=5, anchor=NW, fill=X)
 
         # Initialisation de la premiere fenêtre à afficher
@@ -93,7 +172,7 @@ class TkGuiBuilder(customTk.CTk):
 
         # Création du dictionnaire avec les listes de widgets
         self.widgets_dict = {
-            "Tkinter": [
+            "tkinter": [
                 "Button", "Label", "Entry", "Text", "Checkbutton", "Radiobutton",  "Frame",
                 "OptionMenu", "LabelFrame", "Scrollbar", "Canvas", "Menu", "Listbox",
                 "Menubutton", "Scale", "PanedWindow", "Message", "Spinbox"
@@ -123,7 +202,7 @@ class TkGuiBuilder(customTk.CTk):
                 "TimeCounter"
             ],
 
-            "customTk": [
+            "customtkinter": [
                 "CTkCanvas", "CTkButton", "CTkCheckBox", "CTkComboBox",
                 "CTkEntry", "CTkFrame", "CTkLabel", "CTkOptionMenu", "CTkProgressBar",
                 "CTkRadioButton", "CTkScrollbar", "CTkSegmentedButton", "CTkSlider",
@@ -132,11 +211,11 @@ class TkGuiBuilder(customTk.CTk):
         }
 
         self.modules_opts = {
-                            "tk": ["import tkinter as tk", 0],
+                            "tkinter": ["from tkinter import*", 0],
                             "ttk": ["import tkinter.ttk as ttk", 0],
-                            "tix": ["import tkinter.tix as tix", 0],
+                            "tix": ["from tkinter.tix import*", 0],
                             "Pmw": ["import Pmw", 0],
-                            "customTk": ["import customtkinter as customTk", 0]
+                            "customtkinter": ["from customtkinter import*", 0]
                             }
         
         # Initialisation de la variable pour les boutons radio
@@ -153,22 +232,64 @@ class TkGuiBuilder(customTk.CTk):
 
         # Création des pages du notebook à partir du dictionnaire
         for package, widgets in self.widgets_dict.items():
-            page =  self.tabview.add(package.capitalize().center(8))
-
-            R = customTk.CTkSegmentedButton(
+            page = self.tabview.add(package.capitalize().center(8))
+            
+            frame = CTkScrollableFrame(
                 page,
+                border_width=0,
+                corner_radius=0,
+                fg_color=self.tabview._fg_color,
+                bg_color="transparent",
+                border_color=("black", "gray0"),
+                orientation="horizontal",
+                height=40,
+            )
+
+            frame.pack(side=LEFT, fill=X, expand=YES, padx=[0, 10])
+            frame._scrollbar.grid_forget()
+
+            CTkButton(
+                page,
+                text="⬅️",
+                border_width=0,
+                corner_radius=0,
+                fg_color="transparent",
+                bg_color="transparent",
+                font=("Arial", 20),
+                text_color=("black", "white"),
+                hover_color=("white", "gray30"),
+                command=lambda frame=frame: frame._parent_canvas.xview_scroll(-100, "units"),
+                width=1,
+            ).pack(side=LEFT)
+
+            CTkButton(
+                page,
+                text="➡️",
+                border_width=0,
+                corner_radius=0,
+                fg_color="transparent",
+                bg_color="transparent",
+                font=("Arial", 20),
+                text_color=("black", "white"),
+                hover_color=("white", "gray30"),
+                command=lambda frame=frame: frame._parent_canvas.xview_scroll(100, "units"),
+                width=1,
+            ).pack(side=LEFT)
+
+            R = CTkSegmentedButton(
+                frame,
                 fg_color=self.tabview._fg_color,
                 selected_color=("gray100", "gray30"),
                 unselected_color=self.tabview._fg_color,
                 border_width=0,
-                corner_radius=8,
+                corner_radius=10,
                 command=lambda value: (self.fenetre.deiconify(), (not self.canvas.winfo_ismapped() or self.fenetre.event_generate("<1>")) if value != "arrow" else None),
                 variable=self.selected_widget,
                 selected_hover_color=("gray100", "gray30"),
                 unselected_hover_color=("gray80", "gray20")
                 )
             
-            R.pack(side=LEFT)
+            R.grid(sticky=NW)
             R.delete("CTkSegmentedButton")
             R.insert(0, "arrow", img="arrow")
             R.set("arrow")
@@ -180,7 +301,7 @@ class TkGuiBuilder(customTk.CTk):
                     i += 1
                 except: ...
          
-        customTk.CTkLabel(
+        CTkLabel(
             self,
             font=("Calibri", 16),
             text="main.py                  Ligne:356   Colonne:10,   UTF-8   Python  3.11.1   64-bit     ",
@@ -189,9 +310,9 @@ class TkGuiBuilder(customTk.CTk):
             corner_radius=30,
         ).pack(side=BOTTOM, fill=BOTH)
 
-        self.option_Window = PanedWindow(
+        self.panned_Window1 = PanedWindow(
             orient=VERTICAL,
-            bd=3,
+            bd=5,
             width=300,
             background=self._apply_appearance_mode(self._fg_color),
             proxybackground="blue",
@@ -199,54 +320,72 @@ class TkGuiBuilder(customTk.CTk):
             sashwidth=10
             )
         
-        self.option_Window.pack(side=LEFT, fill=Y, anchor=NW, padx=[5, 0], pady=5)
+        self.tree_frame = Frame(self.panned_Window1)
+        self.panned_Window1.pack(side=LEFT, fill=Y, anchor=NW, padx=5, pady=5)
 
         self.Tree = Treeview(
-                        self.option_Window,
+                        self.tree_frame,
                         show = "tree",
                         )
+        
+        self.Tree.place(x=-1, y=-1, relwidth=1.1, relheight=1.2)
         
         self.Tree.bind("<Delete>", self.delete_widget)
         self.style.configure("Treeview", background=self._apply_appearance_mode(("gray90", "gray20")), foreground=self._apply_appearance_mode(("black", "white")), font=("Segoe UI",  10))
         
         # Les Barres de défilement
-        yScroll = customTk.CTkScrollbar(self.Tree, orientation="vertical", bg_color=("gray90", "gray20"), command=self.Tree.yview)
+        yScroll = CTkScrollbar(self.tree_frame, orientation="vertical", bg_color=("gray90", "gray20"), width=13, command=self.Tree.yview)
         yScroll.pack(side=RIGHT, fill=Y, padx=[0, 1], pady=1)
         
-        xScroll = customTk.CTkScrollbar(self.Tree, orientation="horizontal", bg_color=("gray90", "gray20"), command=self.Tree.xview)
+        xScroll = CTkScrollbar(self.tree_frame, orientation="horizontal", bg_color=("gray90", "gray20"), height=11, command=self.Tree.xview)
         xScroll.pack(side=BOTTOM, fill=X, pady=1, padx=1)
 
         self.Tree.configure(xscrollcommand=xScroll.set, yscrollcommand=yScroll.set)
 
-        self.Tree.insert("", 0, self.fenetre, image="Window", text=" Fenetre1", open=1, tag="master")
         for a in range(10): self.Tree.insert("", 1, a)
 
         self.Tree.tag_bind("master", "<ButtonRelease>", lambda e: self.create_widget(e))
         self.Tree.tag_bind("widget", "<ButtonRelease>", lambda e: self.select_widget(self.nametowidget(self.Tree.focus())))
         
-        self.Options_Frame = customTk.CTkScrollableFrame(
-            self.option_Window,
-            border_width=1,
-            corner_radius=10,
-            fg_color=("LightSkyBlue", "gray12"),
+        self.options_Frame = CTkScrollableFrame(
+            self.panned_Window1,
+            border_width=0,
+            corner_radius=0,
+            fg_color=("gray90", "gray12"),
             bg_color=self._fg_color,
-            border_color=("black", "gray0"),
-            height=400,
-            label_text="    Options                      Values",
-            label_anchor=W,
-            label_font=("Arial", 16, "bold"),
-            label_fg_color=("gray87", "gray80"),
-            label_text_color="black"
+            border_color=("gray50", "black")
             )
 
-        self.option_Window.add(self.Tree, minsize=100, height=142)
-        self.option_Window.add(self.Options_Frame.master.master, minsize=300)
+        self.options_Frame._parent_frame.configure(border_width=1)
+        self.options_Frame._parent_canvas.grid_configure(padx=[1, 0], pady=[0, 1])
+        self.options_Frame._scrollbar.grid_configure(padx=1, pady=[0, 1])
+        self.options_Frame._scrollbar.configure(width=13)
+
+        self.options_Frame.columnconfigure(0, weight=1)
+        self.options_Frame.columnconfigure(1, weight=1, minsize=140)
+
+        CTkSegmentedButton(
+            self.options_Frame._parent_frame,
+            border_width=1,
+            corner_radius=0,
+            fg_color=self.options_Frame._parent_frame._fg_color,
+            unselected_color=self.options_Frame._parent_frame._fg_color,
+            selected_color=self.options_Frame._parent_frame._fg_color,
+            selected_hover_color=self.options_Frame._parent_frame._fg_color,
+            unselected_hover_color=self.options_Frame._parent_frame._fg_color,
+            font=("Arial", 14, "bold"),
+            text_color=("black", "white"),
+            values=["OPTIONS" , "VALEURS"],
+            height=30,
+        ).grid(row=0, column=0, columnspan=2, sticky=EW, padx=[1, 10], pady=1)
+    
+        self.panned_Window1.add(self.tree_frame, height=142)
+        self.panned_Window1.add(self.options_Frame._parent_frame)
 
         self.V_Splitter = PanedWindow(
             self,
             orient=HORIZONTAL,
             background=self._apply_appearance_mode(self._fg_color),
-            sashwidth=10
             )
         
         self.V_Splitter.pack(fill=BOTH, padx=5, pady=5)
@@ -254,99 +393,99 @@ class TkGuiBuilder(customTk.CTk):
         self.H_Splitter = PanedWindow(
             self,
             orient=VERTICAL,
-            height=self.winfo_screenheight()-80,
+            height=self.winfo_screenheight(),
             background=self._apply_appearance_mode(self._fg_color),
-            sashwidth=10,
+            sashwidth=2,
+            sashpad=5,
+            sashrelief=GROOVE,
             )
         
-        self.H_Splitter.bind("<Double-1>", lambda e: self.H_Splitter.sash_place(0, 100, self.winfo_screenheight()-370 if (self.H_Splitter.sash_coord(0)[1] > self.winfo_screenheight()-370) or (self.H_Splitter.sash_coord(0)[1] == 71) else 70))
+        self.H_Splitter.bind("<Double-1>", lambda e: self.H_Splitter.sash_place(0, 0, self.winfo_screenheight()-370 if (self.H_Splitter.sash_coord(0)[1] > self.winfo_screenheight()-370) or (self.H_Splitter.sash_coord(0)[1] <= 80) else 50))
 
-        self.file_list_Frame = customTk.CTkScrollableFrame(
+        self.file_list_Frame = CTkScrollableFrame(
             self.V_Splitter,
-            border_width=1,
-            corner_radius=10,
-            fg_color=("LightSkyBlue", "gray10"),
-            bg_color=self._fg_color,
+            border_width=0,
+            corner_radius=0,
+            fg_color=self._fg_color,
+            bg_color="transparent",
             border_color=("black", "gray0"),
             height=400,
             label_text="FICHIERS",
             label_font=("Arial", 14, "bold"),
-            label_fg_color=("LightSkyBlue", "gray10"),
+            label_fg_color="transparent",
             label_text_color=("black", "white")
             )
         
-        TreeNode(self.file_list_Frame._parent_canvas, None, FileTreeItem("D:\Python\GUI Editor\Project")).expand()
+        self.file_list_Frame._scrollbar.configure(width=13)
+        self.file_list_Frame._parent_canvas.grid_configure(padx=[10, 0])
+
+        self.file_Tree = TreeNode(self.file_list_Frame._parent_canvas, None, FileTreeItem(""))
         
         self.V_Splitter.add(self.H_Splitter, minsize=300)
-        self.V_Splitter.add(self.file_list_Frame.master.master, minsize=250)
+        self.V_Splitter.add(self.file_list_Frame.master.master, minsize=200)
         
-        self.code_Frame = customTk.CTkFrame(
+        self.code_Frame = CTkFrame(
             self.H_Splitter,
-            fg_color=("LightSkyBlue1", "gray12"),
+            fg_color=self.options_Frame._parent_frame._fg_color,
             bg_color=self._fg_color,
             corner_radius=0,
-            border_width=1,
-            border_color=("black", "gray0")
+            border_width=0
             )
         
-        self.bar_Frame = customTk.CTkFrame(
+        self.bar_Frame = CTkFrame(
             self.code_Frame,
-            fg_color=("gray90", "gray20"),
+            fg_color=("gray80", "gray16"),
             bg_color=self._fg_color,
             corner_radius=0,
-            border_width=1,
-            border_color=("black", "gray0")
             )
         
-        self.bar_Frame.pack(side=TOP, fill=X)
+        self.bar_Frame.pack(side=TOP, fill=X, padx=2, pady=1)
 
         file_var = StringVar(value="   project.py   ")
 
-        self.file_bar = customTk.CTkSegmentedButton(
+        self.file_bar = CTkSegmentedButton(
             self.bar_Frame,
-            border_width=1,
+            border_width=0,
             corner_radius=0,
-            fg_color=("LightSkyBlue1", "gray10"),
-            unselected_color=("LightSkyBlue2", "gray0"),
-            selected_color=("LightSkyBlue1", "gray12"),
-            selected_hover_color=("LightSkyBlue1", "gray13"),
+            fg_color=("gray90", "gray10"),
+            unselected_color=self.bar_Frame._fg_color,
+            selected_color=self.code_Frame._fg_color,
+            selected_hover_color=self.code_Frame._fg_color,
             unselected_hover_color=("white", "gray30"),
             text_color=("black", "white"),
-            font=("Arial", 14),
+            font=("Calibri", 16),
             command=lambda v: ...,
             values=["   project.py   " , "    main.py   "],
-            height=38,
+            height=42,
             variable=file_var
         )
 
-        self.file_bar.pack(side=LEFT, anchor=W, padx=1, pady=[1, 0])
+        self.file_bar.place(x=0, y=0)
 
         bt_var = StringVar(value=" ")
-        self.code_Frame_bar = customTk.CTkSegmentedButton(
+        self.code_Frame_bar = CTkSegmentedButton(
             self.bar_Frame,
-            corner_radius=8,
-            fg_color=("gray70", "gray15"),
-            unselected_color=("gray70", "gray15"),
-            selected_color=("gray70", "gray15"),
+            corner_radius=10,
+            fg_color=("gray90", "gray15"),
+            unselected_color=("gray90", "gray15"),
+            selected_color=("gray90", "gray15"),
             selected_hover_color=("white", "gray30"),
             unselected_hover_color=("white", "gray30"),
             text_color=("black", "white"),
             font=("Arial", 14),
-            command=lambda v: (exec("self.poo = not self.poo", {"self": self}), bt_var.set(""), self.charge_code()) if " " in v else exec(self.code_Text.get(1.0, END)),
-            values=["⏺", "⏹", " ♻️", "a"],
+            command=lambda value: (bt_var.set(""), (exec("self.poo = not self.poo", {"self": self}), self.charge_code()) if " " in value else self.fenetre.deiconify() if value == "w" else self.event_generate("<F5>")),
+            values=["⏺", "⏹", " ♻️"],
             height=20,
             variable=bt_var
         )
 
-        self.code_Frame_bar.pack(side=LEFT, anchor=E, padx=[445, 0], fill=X)
+        self.code_Frame_bar.pack(side=RIGHT, pady=5, padx=5)
+        self.code_Frame_bar.insert(value="w", img="Window")
         for i, widget in enumerate(list(self.code_Frame_bar.children.values())[1:]): widget.configure(text_color=[("black", "green2"), ("red", "red3"), ("DeepSkyBlue4", "DeepSkyBlue3"), "blue"][i])
-        
-        list(self.code_Frame_bar.children.values())[4].configure(image="Window")
-        self.code_Frame_bar.set(" ")
 
-        self.H_Splitter.add(self.code_Frame, height=self.winfo_screenheight()-370, minsize=70)
+        self.H_Splitter.add(self.code_Frame, height=self.winfo_screenheight())
 
-        self.code_Text = customTk.CTkTextbox(
+        self.code_Text = CTkTextbox(
             self.code_Frame,
             width = self.winfo_screenwidth()-280,
             height=self.winfo_screenheight()-80,
@@ -355,7 +494,7 @@ class TkGuiBuilder(customTk.CTk):
             border_color=("black", "gray0"),
             font=("Consolas", 15),
             fg_color=self.code_Frame._fg_color,
-            selectbackground=self._apply_appearance_mode(("LightSkyBlue", "gray35")),
+            selectbackground=self._apply_appearance_mode(("light sky blue", "gray20")),
             selectforeground="",
             text_color=("black", "white"),
             tabs="24p",
@@ -364,16 +503,14 @@ class TkGuiBuilder(customTk.CTk):
             wrap="word"
             )
 
-        self.code_Text.pack(padx=15, pady=5)
+        self.code_Text.pack(padx=[20, 5], pady=[5, 0])
         self.code_Text.tag_configure("widget")
+        self.code_Text._y_scrollbar.configure(width=6)
         
         self.code_Text.bind("Control-Z", lambda e: self.code_Text.edit_undo())
         self.code_Text.bind("Control-Y", lambda e: self.code_Text.edit_redo())
         
         self.code_Text.bind("<KeyRelease-Return>", lambda e: self.code_Text.insert(INSERT, "\t\t", self.code_Text.tag_names("current")[-1]))
-
-       # Separator(self.code_Frame, cursor="sb_v_double_arrow", orient=HORIZONTAL, style="s.TSeparator").place(relx=0.005, y=36, relwidth=0.905, height=1)
-        self.style.configure("s.TSeparator", background="gray30")
         
         self.cdg = ic.ColorDelegator()
         self.cdg.prog = re.compile(r'\b(?P<MYGROUP>tkinter)\b|' + ic.make_pat().pattern, re.S)
@@ -385,7 +522,7 @@ class TkGuiBuilder(customTk.CTk):
         self.highlighted_textbox.redir.register("insert", self.check_text_insertion)
         self.highlighted_textbox.redir.register("delete", self.check_text_delete)
 
-        self.message_Frame = customTk.CTkFrame(
+        self.message_Frame = CTkFrame(
             self.H_Splitter,
             corner_radius=0,
             border_width=0,
@@ -394,9 +531,9 @@ class TkGuiBuilder(customTk.CTk):
             bg_color=self._fg_color
             )
 
-        self.msg_box_bar = customTk.CTkSegmentedButton(
+        self.msg_box_bar = CTkSegmentedButton(
             self.message_Frame,
-            corner_radius=8,
+            corner_radius=10,
             fg_color=self.message_Frame._fg_color,
             unselected_color=self.message_Frame._fg_color,
             selected_color=self.message_Frame._fg_color,
@@ -404,7 +541,7 @@ class TkGuiBuilder(customTk.CTk):
             unselected_hover_color=("white", "gray20"),
             text_color=("black", "white"),
             font=("Arial", 12),
-            command=lambda v: (self.H_Splitter.sash_place(0, self.winfo_screenwidth(), self.winfo_screenheight()), bt_var.set("")) if v == "❌" else (self.message_box.config(state="normal"), self.message_box.delete(1.0, END), self.message_box.config(state="disabled"), bt_var.set("")),
+            command=lambda v: (self.H_Splitter.sash_place(0, 0, self.winfo_screenheight()), bt_var.set("")) if v == "❌" else (self.message_box.config(state="normal"), self.message_box.delete(1.0, END), self.message_box.config(state="disabled"), bt_var.set("")),
             values=("♻️", "❌"),
             height=30,
             variable=bt_var
@@ -414,39 +551,35 @@ class TkGuiBuilder(customTk.CTk):
 
         for i, widget in enumerate(list(self.msg_box_bar.children.values())[1:]): widget.configure(text_color=[("black", "green4"), ("red", "red3")][i], font=("Arial", [14, 12][i]),)
 
-        self.message_box = customTk.CTkTextbox(
+        self.message_box = CTkTextbox(
             self.message_Frame,
-            corner_radius=10,
-            border_width=1,
-            border_color=("black", "gray20"),
+            corner_radius=0,
+            border_width=0,
             width = self.winfo_screenwidth()-280,
             height=self.winfo_screenheight()-80,
-            font=("Consolas", 16),
-            fg_color=("gray90", "gray20"),
+            font=("Consolas", 14),
+            fg_color=("gray80", "gray20"),
             selectbackground=self._apply_appearance_mode(("LightSkyBlue", "gray35")),
-            state="d"
+            state="disabled"
             )
         
-        self.message_box.pack(fill=X, padx=5, pady=[0, 10], expand=True)
+        self.message_box.pack(fill=X)
         self.message_box.tag_configure("error", foreground=self._apply_appearance_mode(("red", "red1")))
         self.H_Splitter.add(self.message_Frame, minsize=0)
 
         separator = Separator(
-            self.message_Frame,
-            cursor="sb_v_double_arrow",
+            self.H_Splitter,
             orient=HORIZONTAL)
-        
-        separator.place(relx=0, rely=0, relwidth=1, height=1)
-        self.style.configure("TSeparator", background="blacka")
 
-        separator.bind("<Enter>", lambda e: (separator.place(height=4), self.style.configure("TSeparator", background="blue")))
-        separator.bind("<Leave>", lambda e: (separator.place(height=1), self.style.configure("TSeparator", background="blacka")))
-        
+        separator.place(x=-5, y=-5, height=2)
+
+        verify = lambda: self.after(100, verify) if self.H_Splitter.identify(self.winfo_pointerx() - self.H_Splitter.winfo_rootx(), self.winfo_pointery() - self.H_Splitter.winfo_rooty()) else (separator.place_forget(), self.message_box_height.set(self.H_Splitter.sash_coord(0)[1]))
+        self.H_Splitter.bind("<Motion>", lambda e: self.H_Splitter.identify(e.x, e.y) and (separator.place(dict(zip(("x", "y", "relwidth"), list(self.H_Splitter.sash_coord(0))+[1]))), self.style.configure("TSeparator", background=self._apply_appearance_mode(("blac", "blue"))), self.after(100, verify)))
+
         # Le canvas pour afficher les éléments de rédimensionnenent
-        self.canvas =  Canvas(self.fenetre, relief=RIDGE, bd=0)
+        self.canvas =  Canvas(self.fenetre, relief=FLAT, bd=0)
         
         # Dessin du cadre entourant le widget
-        self.canvas.create_rectangle(0, 0, 0, 0, tag="canvas")
         self.canvas.create_rectangle(0, 0, 0, 0, outline="blue1", width=1, dash=1, tag="rectangle")
 
         # Afficage des points de rédimensionnenent
@@ -459,28 +592,26 @@ class TkGuiBuilder(customTk.CTk):
         self.canvas.create_rectangle((0, 0, 0, 0), tag=("point_SW", "size_ne_sw", "points"))
         self.canvas.create_rectangle((0, 0, 0, 0), tag=("point_E", "sb_h_double_arrow", "points"))
 
-        self.canvas.itemconfigure("points", fill=self._apply_appearance_mode(("black", "white")), outline=self._apply_appearance_mode(("black", "white")))
-
         self.canvas.tag_bind("canvas", "<1>", self.create_widget)
         self.canvas.tag_bind("points", "<Leave>", lambda e: self.canvas.configure(cursor="arrow"))
         self.canvas.tag_bind("points", "<Enter>", lambda e: self.canvas.configure(cursor=self.canvas.gettags("current")[1]))
 
         # Lier l'événement de  redimensionnement des widgets
-        self.canvas.tag_bind("points", "<Motion>", self.resize_widget)
-        self.canvas.tag_bind("points", "<Button-1>", self.toggle_resizing)
-        self.canvas.tag_bind("points", "<ButtonRelease>", lambda e: (self.toggle_resizing(e), self.update_position_code(e)))
+        self.canvas.tag_bind("points", "<1>", lambda e: exec("self.start_x, self.start_y = self.winfo_pointerxy()", {"self": self}))
+        self.canvas.tag_bind("points", "<B1-Motion>", self.resize_widget)
+        self.canvas.tag_bind("points", "<ButtonRelease>", self.update_position_code)
 
         # Variable pour les widgets de la fenetre
         self.widget = self.fenetre
-        self.resizing = False
         self.deleting = True
         self.updating = False
         self.poo = True
-        self.file = "Project\project"
+        self.file = ""
         self.sep = ["(\n\t\t\t", ",\n\t\t\t", "\n\t\t)"]
         self.defauts = {}
         self.widgets_list = {}
         self.all_children = {self.fenetre: None}
+        self.message_box_height = IntVar(value=self.winfo_screenheight()-360)
 
         # Construire le selecteur des couleurs
         self.build_colorchooser()
@@ -492,21 +623,60 @@ class TkGuiBuilder(customTk.CTk):
         self.build_Options()
 
         # Récupération des messgages python
-        sys.stdout = TextIO(self.message_box, sys.stdout)
-        sys.stderr = TextIO(self.message_box, sys.stderr, "error")
+        sys.stdout = TextIO(self.message_box, sys.stdout, self)
+        sys.stderr = TextIO(self.message_box, sys.stderr, self, "error")
 
+        """self.fenetre.geometry(f"{self.file_list_Frame.master.master.winfo_width()}x \
+                              {int(self.file_list_Frame.master.master.winfo_height())-30}+ \
+                              {self.file_list_Frame.master.master.winfo_rootx()-9}+ \
+                              {self.file_list_Frame.master.master.winfo_rooty()}")"""
+
+        self.fenetre.geometry(f"245x{int(self.winfo_screenheight())-250}+{int(self.winfo_screenwidth())-260}+135")
+
+        self.charge_file()
         self.after(10, lambda: self.wm_state("zoomed"))
-        self.after(1000, lambda: (self.fenetre.geometry(f"{self.file_list_Frame.master.master.winfo_width()}x{int(self.file_list_Frame.master.master.winfo_height())-30}+{self.file_list_Frame.master.master.winfo_rootx()-9}+{self.file_list_Frame.master.master.winfo_rooty()}"), self.update_idletasks(), self.charge_file()))
+        
+    def open_file(self, new=False):
+        file = "nouveau.TkD" if new else askopenfilename(defaultextension="TkD", title="Sauvegarder le projet", filetypes=[("Projet Tk Designer", ["TkD"])])
+        
+        if file and file != self.file:
+            self.file = file
+
+            self.file_Tree.item.path = dirname(file)
+            self.file_Tree.expand()
+
+            for widget in list(self.all_children.keys())[1:]: widget.destroy()
+            self.code_Text.tag_delete(self.code_Text.tag_names())
+            self.Tree.delete(self.fenetre)
+
+            self.canvas.pack_forget()
+            self.widget = self.fenetre
+
+            self.deleting = True
+            self.code_Text.delete(1.0, END)
+            self.deleting = False
+
+            self.message_box._textbox.configure(state="normal")
+            self.message_box.delete(1.0, END)
+            self.message_box._textbox.configure(state="disable")
+
+            try: self.charge_file()
+            except: showerror("Ouvrir un fichier", "Erreur lors de l'ouverture du fichier.\n")
 
     def charge_file(self):
+        self.defauts = {}
+        self.widgets_list = {}
+        self.all_children = {self.fenetre: None}
+
+        self.fenetre.configure(fg_color="SystemButtonFace")
+
         items = list({key: str(self.fenetre.cget(key)) for key in set(self.fenetre.keys()).intersection(self.Options_widgets)}.items())
         items.sort(key=lambda x: x[0])
 
-        self.defauts["tk.Tk"] = {key: "" for key in dict(items).keys()}
-        self.defauts["tk.Tk"]["background"] = "SystemButtonFace"
+        self.defauts["tkinter.Tk"] = {key: "" for key in dict(items).keys()}
         
         try:
-            with open(f"{self.file}.Tk", "rb") as Tk_file:
+            with open(self.file, "rb") as Tk_file:
                 data = loads(Tk_file)
                 Fenetre = list(data)[0]
                 self.widgets_list[self.fenetre] = data[Fenetre]
@@ -518,13 +688,12 @@ class TkGuiBuilder(customTk.CTk):
                     for index1, index2 in zip(indexes[::2], indexes[1::2]):
                         self.code_Text.tag_add(tag, index1, index2)
             
-        except Exception as e:
-            #print(f"Erreur lors du chargement des fichiers: {e}", file=sys.stderr)
+        except Exception as e: #print(f"Erreur lors du chargement des fichiers: {e}", file=sys.stderr)
 
             self.widgets_list[self.fenetre] = {
                 "nom": "Fenetre1",
                 "classe": "Tk",
-                "package": "tk",
+                "package": "tkinter",
                 "titre": "Tk Gui builder",
                 "geometry": self.fenetre.geometry(),
                 "options": dict(items),
@@ -532,17 +701,150 @@ class TkGuiBuilder(customTk.CTk):
             }
 
         self.all_children[self.fenetre] = self.widgets_list[self.fenetre]
+
+        self.Tree.insert("", 0, self.fenetre, image="Window", text=f" Fenetre1", open=1, tag="master")
         
         self.charge_code()
-        
-    def save_files(self):
-        try:
-            try:
-                with open(f"{self.file}.json") as js_file, open(f"{self.file}.xml", "rb") as xml_file, \
-                    open(f"{self.file}.Tk", 'rb') as Tk_file,  open(f"{self.file}.py") as py_file:
-                        xml_data = xml_file.read(); py_text = py_file.read(); js_data = js_file.read(); Tk_data = Tk_file.read()
-            except: py_text = js_data, Tk_data = xml_data  = "", b""
+    
+    def charge_code(self):
 
+        def create_children(parent, parent_name, children):
+            for widget, values in children.copy().items():
+                nom = values["nom"]
+                package = values["package"]
+                classe = values["classe"]
+                place_info = values["position"]
+
+                if widget == nom:
+                    widget = eval(package+"."+classe)(parent)
+
+                    self.modules_opts[package][1] += 1
+
+                    if package+"."+classe not in self.defauts: self.defauts[package+"."+classe] = {key: widget.cget(key) for key in widget.keys()}
+
+                    widget.config(**values["options"])
+
+                    items = list({key: str(widget.cget(key)) for key in set(widget.keys()).intersection(self.Options_widgets)}.items())
+                    items.sort(key=lambda x: x[0])
+                   
+                    widget.place(place_info)
+                    
+                    # self.Tree.insert(parent, END, widget, image=package.capitalize()+classe+"_ico", text=f" {nom}", tag=(nom, "widget"))
+                    self.Tree.insert(parent, END, widget, image="Window", text=f" {nom}", tag=(nom, "widget"))
+
+                    
+                    # if "state" in widget.keys() and classe in ("Entry", "Text", "Combobox"): widget.configure(state="disabled")
+                    if "disabledforeground" in widget.keys(): widget.configure(disabledforeground=widget["foreground"])
+                    if "disabledbackground" in widget.keys(): widget.configure(disabledbackground= widget["background"])
+                    
+                    children[widget] = children[nom]
+                    children[widget]["options"] = dict(items)
+                    children[widget]["parent"] = parent
+                    children.pop(nom)
+                    
+                    self.all_children[widget] = children[widget]
+
+                    widget.bind("<B1-Motion>", self.move_widget)
+                    widget.bind("<Button-1>", lambda e: self.select_widget(e.widget) if self.selected_widget.get() == "arrow" else self.create_widget(e))
+                    widget.bind("<ButtonRelease>", self.update_position_code)
+                    widget.bind("<Delete>", self.delete_widget)
+
+                items = {key: value for key, value in values["options"].items() if value and value != self.defauts[package+"."+classe][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}
+                index = self.code_Text.index(nom+".first") or self.limite[0]
+                
+                self.deleting = True
+                self.code_Text.delete(nom+".first", nom+".last")
+
+                text = ("\n\t\tself." if self.poo else "\n")+nom+" = "+(package+"." if package in ("ttk", "Pmw") else "")+classe+(self.sep[0] if items else "(")+parent_name+(self.sep[1] if items else "")
+                text += self.sep[1].join([key+"="+str("\""+str(value)+"\"" if not (str(value).isnumeric() or str(value)[1:].isnumeric()) else value) for key, value in items.items() if value])+(self.sep[2] if items else ")")+"\n"+("\n" if items else "")
+
+                self.highlighted_textbox.insert(index, text, tags=(nom, "widget"))
+                
+                text = ("\t\tself." if self.poo else "")+nom+".place("
+                text += ", ".join([""+key+"="+str("\""+str(value)+"\"" if not str(value).isnumeric() else value) for key, value in place_info.items()])+")\n"
+
+                self.highlighted_textbox.insert(nom+".last", text, tags=(nom, nom+".pos", "widget"))
+
+                if not self.code_Text.get("import.first", "import.last").count(package):
+                    self.code_Text.insert("import.last -1 c", self.modules_opts[package][0] + "\n", tags=("import", f"{package}.import", "widget"))
+
+                self.limite = self.code_Text.index(f"{nom}.last"), nom
+
+                create_children(widget, ("self." if self.poo else "")+values["nom"], children[widget]["children"])
+        
+        if ab := self.code_Text.tag_ranges("import"):
+            a, b = ab
+            self.deleting = True
+            self.code_Text.delete(a, b)
+        else: a = END
+        
+        self.code_Text.insert(a, "from tkinter import*", tags=("import", "widget"))
+        self.code_Text.insert(self.code_Text.index("import.last"), "\n\n", tags="import")
+
+        items = self.widgets_list[self.fenetre]["options"]
+
+        nom = self.widgets_list[self.fenetre]["nom"]
+        classe = self.widgets_list[self.fenetre]["classe"]
+        package = self.widgets_list[self.fenetre]["package"]
+        geometry = self.widgets_list[self.fenetre]["geometry"]
+        titre = self.widgets_list[self.fenetre]["titre"]
+
+        items = {key: value for key, value in items.items() if value and value != self.defauts[package+"."+classe][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}
+        package = package+"." if package in ("ttk", "Pmw") else ""
+
+        self.fenetre.title(titre)
+        self.fenetre.config(items)
+        self.fenetre.geometry(geometry)
+
+        self.Tree.item(self.fenetre, text=f" {nom}")
+        
+        text = "  \n"+(("class "+nom+"("+package+classe+"):\n") if self.poo else (nom+" = "+package+classe+"()\n"))+ \
+        ("\tdef __init__(self):\n" if self.poo else "")+ \
+        ("\t\tsuper().__init__()\n\n" if self.poo else "")+ \
+        ("\t\tself" if self.poo else nom)+".title(\""+titre+"\")\n"+ \
+        ("\t\tself" if self.poo else nom)+".geometry(\""+geometry+"\")\n\n"+ \
+        ("\t\tself" if self.poo else nom)+".configure"+self.sep[0]+ \
+        self.sep[1].join([k+"="+str("\""+v+"\"" if not (v.isnumeric() or v[1:].isnumeric()) else v) for k, v in items.items() if v])+ \
+        self.sep[2]+"\n"
+        
+        if ab := self.code_Text.tag_ranges(nom):
+            a, b = ab
+            self.deleting = True
+            self.code_Text.delete(a, b)
+        else: a = END
+
+        self.code_Text.insert(a, text, tags=(nom, "widget"))
+        
+        if not self.code_Text.tag_ranges("user"): self.code_Text.insert(nom+".last", "\n\t\t\n", tags="user")
+
+        if ab := self.code_Text.tag_ranges("run"):
+            a, b = ab
+            self.deleting = True
+            self.code_Text.delete(a, b)
+        else: a = END
+
+        text = "\t\t\nif __name__ == \"__main__\":\n\t"+nom+("()" if self.poo else "")+".mainloop()\n\t"
+        
+        self.code_Text.insert(a, text, tags=("run", "widget"))
+        self.code_Text.insert("run.last", "", tags="end")
+
+        self.limite = self.code_Text.index(f"{nom}.last"), "Fenetre1"
+        
+        create_children(self.fenetre, "self" if self.poo else self.widgets_list[self.fenetre]["nom"], self.widgets_list[self.fenetre]["children"])
+        
+        self.code_Text._textbox.edit_reset()
+        self.update_options_Frame()
+
+        # Actualisation de la geometry
+        self.fenetre.bind("<Configure>", lambda e: (self.update_idletasks(), self.update_Options("geometry", self.fenetre.geometry())))
+     
+    def save_files(self):
+        self.file = self.file or asksaveasfile(confirmoverwrite=True, defaultextension="TkD", title="Sauvegarder le projet", filetypes=[("Projet Tk Designer", ["TkD"])]).name or self.file
+        if not self.file or not exists(self.file): return showerror("Echec de la sauvegarde", "Le projet n'a pas pu être sauvegardé, une erreur est survenue.")
+        
+        file = self.file[:-4]
+
+        try:
             def serialize(value):
                 optimise = lambda v: {key: value for key, value in v["options"].items() if self.defauts[v["package"]+"."+v["classe"]][key] != value}
                 return {v["nom"] if isinstance(v, dict) and "classe" in v else k : optimise(value) if k == "options" else serialize(v) for k, v in value.items() if k != "parent"} if isinstance(value, dict) else value if isinstance(value, (int, list, float, bool, None.__class__)) else int(value) if isinstance(value, str) and (value.isnumeric() or value[1:].isnumeric()) else str(value)
@@ -567,8 +869,8 @@ class TkGuiBuilder(customTk.CTk):
             key = list(data)[0]
             self.widgets_list[self.fenetre].pop("script")
 
-            with open(f"{self.file}.json", "w") as js_file, open(f"{self.file}.xml", "wb") as xml_file, \
-                open(f"{self.file}.Tk", 'wb') as Tk_file,  open(f"{self.file}.py", "w") as py_file:
+            with open(f"{file}.json", "w") as js_file, open(f"{file}.xml", "wb") as xml_file, \
+                open(f"{file}.TkD", 'wb') as Tk_file,  open(f"{file}.py", "w") as py_file:
 
                     xml = xmler(data)
                     Et.ElementTree(xml).write(xml_file, encoding="utf-8", xml_declaration=True)
@@ -577,11 +879,12 @@ class TkGuiBuilder(customTk.CTk):
                     dumps(data, Tk_file)
 
                     py_file.write(self.code_Text.get(1.0, END))
+                    compile(self.file[:-4]+".py", self.file[-4]+".pyc")
 
-            if not os.path.exists(os.path.dirname(self.file)+"\Buckup"):
-                os.mkdir(os.path.dirname(self.file)+"\Buckup")
+            if not exists(dirname(file)+"\Buckup"):
+                os.mkdir(os.path.dirname(file)+"\Buckup")
             
-            file = os.path.dirname(self.file)+"\Buckup\\"+os.path.basename(self.file)+"_buckup"
+            file = dirname(file)+"\Buckup\\"+basename(file)+"_buckup"
 
             with open(f"{file}.json", "w") as js_file_copy, open(f"{file}.xml", "wb") as xml_file_copy, \
                 open(f"{file}.Tk", 'wb') as Tk_file_copy,  open(f"{file}.py", "w") as py_file_copy:
@@ -591,13 +894,7 @@ class TkGuiBuilder(customTk.CTk):
                     dumps(data, Tk_file_copy)
                     py_file_copy.write(self.code_Text.get(1.0, END))
               
-        except OSError as e:
-            if self.file:
-                with open(f"{self.file}.json", "w") as js_file, open(f"{self.file}.xml", "wb") as xml_file, \
-                    open(f"{self.file}.Tk", 'wb') as Tk_file,  open(f"{self.file}.py", "w") as py_file:
-                        xml_file.write(xml_data); py_file.write(py_text); js_file.write(js_data); Tk_file.write(Tk_data)
-            
-            print(f"Echec de la sauvegarde: {e}", file=sys.stderr)
+        except Exception as e: print(f"Echec de la sauvegarde: {e}", file=sys.stderr)
 
     def build_colorchooser(self):
         with open("Colors.list", "rb") as f: colors = loads(f)
@@ -610,7 +907,7 @@ class TkGuiBuilder(customTk.CTk):
 
         cur_color = StringVar()
 
-        F = customTk.CTkScrollableFrame(
+        F = CTkScrollableFrame(
             self.colorchoser,
             fg_color=("white", "gray70"),
             corner_radius=10,
@@ -619,7 +916,8 @@ class TkGuiBuilder(customTk.CTk):
             width=356,
             height=370,
             )
-        F.grid(padx=10, pady=[10, 5])
+        
+        F.grid(padx=10, pady=[10, 5], columnspan=3)
         
         F = F._parent_canvas
         F.create_rectangle(1, 1,36,35, fill="LightSkyblue", tag="rect")
@@ -646,47 +944,56 @@ class TkGuiBuilder(customTk.CTk):
 
             except: print("Echec de", color)
         
-        customTk.CTkButton(self.colorchoser,
+        CTkButton(self.colorchoser,
             text="PLUS",
             font=("Arial", 14, "bold"),
-            corner_radius=30,
+            corner_radius=15,
             text_color="white",
             fg_color="DeepSkyBlue2",
             hover_color="DeepSkyBlue3",
             image="ColorDialog",
             compound="left",
             command=lambda: (self.colorchoser.withdraw(), F.coords("rect", 1, 1, 36 ,35), self.current_var.set(askcolor()[1] or self.current_var.get())),
-            width=50
-            ).grid(sticky=E, pady=[5, 0], padx=[0, 20])
+            width=50,
+            height=35,
+            ).grid(sticky=E,  column=2, padx=[0, 10], pady=[5, 0])
         
-        customTk.CTkButton(self.colorchoser,
+        CTkButton(self.colorchoser,
             text="OK",
             font=("Arial", 14, "bold"),
-            corner_radius=30,
+            corner_radius=15,
             text_color="white",
             fg_color="green",
             hover_color="green3",
             command=lambda: (self.colorchoser.withdraw(), self.current_var.set(cur_color.get())),
-            width=30,
-            height=35
-            ).grid(sticky=W, row=1, padx=[20, 0], pady=[5, 0])
+            width=80,
+            height=35,
+            ).grid(row=1,  column=1, pady=[5, 0])
         
-        customTk.CTkButton(self.colorchoser,
+        CTkButton(self.colorchoser,
             text="ANNULER",
             font=("Arial", 14, "bold"),
-            corner_radius=30,
+            corner_radius=15,
             text_color="white",
             fg_color="red",
             hover_color="red3",
             command=self.colorchoser.withdraw,
             width=50,
             height=35,
-            ).grid(row=1, padx=[0, 35], pady=[5, 0])
+            ).grid(sticky=W, row=1, column=0, padx=[10, 0])
     
     def build_Options(self):
         self.Options_widgets = {}
         self.spin_widgets = []
         self.cur_Options_list = []
+
+        Separator(
+                self.options_Frame._parent_canvas,
+                orient=HORIZONTAL,
+                style="Line.TSeparator",
+        ).place(x=0, y=0, relwidth=1)
+        
+        self.style.configure("Line.TSeparator", background=self._apply_appearance_mode(("gray90", "blac")))
 
         with open("Cursors.list", "rb") as f:
             cursors = loads(f)
@@ -736,300 +1043,207 @@ class TkGuiBuilder(customTk.CTk):
             "wrap": ["comb", ["char", "word", "none"]],
             "wraplength": ["spin"]
         }
-
+        
+        # Empêche au trace_add d'actualiser la valeur pendant l'assigantion des variables
+        self.updating = True
+        
         for i, option in enumerate(self.options_list_type):
             var = StringVar()
             var.trace_add("write", lambda var_name, _, reason, option=option: self.updating or self.update_Options(option, self.Options_widgets[option][0].get()))
 
             self.Options_widgets[option] = [var]
+            
+            separator = Separator(
+                self.options_Frame,
+                orient=HORIZONTAL,
+                style="Line.TSeparator",
+            )
+            
+            separator.grid(row=i, columnspan=2, sticky=EW, pady=[0, 40])
+            self.Options_widgets[option].append(separator)
 
-            lab = customTk.CTkLabel(
-                self.Options_Frame,
-                font=("Yu Gothic", 15),
-                fg_color=self.Options_Frame.cget("fg_color"),
-                text=(option[:13].title()+"...").center(18) if len(option) > 12 else option.title().center(18),
+            lab = CTkLabel(
+                self.options_Frame,
+                font=("Yu Gothic", 16),
+                fg_color=self.options_Frame._parent_frame._fg_color,
+                text=(option[:14].title()+"..") if len(option) > 14 else option.title(),
                 text_color=("black", "white")
                 )
             
-            lab.grid(row=i)
+            lab.grid(row=i, padx=5)
             self.Options_widgets[option].append(lab)
             
             match self.options_list_type[option][0]:
                 case "text":
-                    t = customTk.CTkEntry(
-                        self.Options_Frame,
+                    t = CTkEntry(
+                        self.options_Frame,
                         border_width=0,
-                        corner_radius=30,
+                        corner_radius=10,
                         text_color=("black", "black"),
                         fg_color=("white", "gray60"),
                         font=("Yu Gothic", 15, "bold"),
                         textvariable=var
                     )
 
-                    t.grid(row=i, column=1, pady=4, sticky=NSEW)
+                    t.grid(row=i, column=1, padx=[5, 4], pady=5, sticky=EW)
 
                 case "colors":
-                    t = customTk.CTkEntry(
-                        self.Options_Frame,
+                    t = CTkEntry(
+                        self.options_Frame,
                         border_width=0,
-                        corner_radius=30,
+                        corner_radius=10,
                         text_color=("black", "black"),
                         fg_color=("white", "gray60"),
                         font=("Yu Gothic", 14),
-                        width=112,
-                        textvariable=var
+                        textvariable=var,
+                        width=1,
                     )
                     
-                    t.grid(row=i, column=1, pady=4, sticky=W)
+                    t.grid(row=i, column=1, padx=[5, 4], pady=4, sticky=EW)
                     t.bind("<FocusOut>", lambda e, option=option: self.Options_widgets[option][0].set(self.widget.cget(option)))
 
-                    b = customTk.CTkButton(
-                        self.Options_Frame,
-                        corner_radius=0,
+                    b = CTkButton(
+                        self.options_Frame,
+                        corner_radius=10,
                         hover_color=("white", "gray80"),
                         image="ColorDialog",
-                        fg_color="transparent",
+                        fg_color=("white", "gray60"),
+                        background_corner_colors=(("white", "gray60"), self.options_Frame._parent_frame._fg_color, self.options_Frame._parent_frame._fg_color, ("white", "gray60")),
+                        command=lambda option=option: (self.colorchoser.deiconify(), exec("self.current_var = self.Options_widgets[option][0]")),
                         text_color="white",
                         cursor="hand2",
-                        width=10,
+                        width=1,
                     )
                     
-                    b.grid(row=i, column=1, sticky=E)
-                    b.bind("<1>", lambda e, option=option: (self.colorchoser.deiconify(), exec("self.current_var = self.Options_widgets[option][0]")))
+                    b.grid(row=i, column=1, padx=4, sticky=E)
                     
                     self.Options_widgets[option].append(b)
 
                 case "switch":
-                    t = customTk.CTkSwitch(
-                        self.Options_Frame,
+                    t = CTkSwitch(
+                        self.options_Frame,
                         progress_color=("white", "gray80"),
                         font=("Yu Gothic", 15),
                         fg_color=("white", "gray30"),
-                        button_color=("red", "blue"),
-                        button_hover_color=("red4", "DeepSkyBlue"),
-                        text_color=self.Options_Frame.cget("fg_color"),
+                        button_color=("DeepSkyBlue3", "blue"),
+                        button_hover_color=("DeepSkyBlue", "blue1"),
+                        text_color=self.options_Frame.cget("fg_color"),
                         onvalue=True,
                         offvalue=False,
+                        text="",
                         variable=var
                     )
 
-                    t.grid(row=i, column=1, pady=4)
+                    t.grid(row=i, column=1, padx=5, pady=4)
 
                 case "comb":
-                    t = customTk.CTkComboBox(
-                        self.Options_Frame,
+                    t = CTkComboBox(
+                        self.options_Frame,
                         border_width=0,
-                        corner_radius=15,
+                        corner_radius=10,
                         values=self.options_list_type[option][1],
-                        button_color=("gray90", "gray80"),
+                        button_color=("gray76", "gray80"),
                         button_hover_color=("DeepSkyBlue2", "gray100"),
-                        text_color=("black", "black"),
+                        text_color="black",
                         fg_color=("white", "gray60"),
                         font=("Yu Gothic", 15),
-                        variable=var
+                        variable=var,
+                        width=1
                     )
 
-                    t.grid(row=i, column=1, pady=4, sticky=NSEW)
+                    t.grid(row=i, column=1, padx=[5, 4], pady=4, sticky=EW)
                     t.bind("<FocusOut>", lambda e, option=option: self.Options_widgets[option][0].set(self.widget.cget(option)))
 
                 case "spin":
-                    b = customTk.CTkFrame(
-                        self.Options_Frame,
-                        corner_radius=20,
+                    t = CTkFrame(
+                        self.options_Frame,
+                        corner_radius=10,
                         fg_color=("white", "gray60"),
                         height=28,
-                        width=146,
+                        width=1,
                     )
 
-                    b.grid(row=i, column=1, padx=[0, 1], pady=4, sticky=W)
+                    t.grid(row=i, column=1, padx=[5, 4], pady=4, sticky=EW)
 
-                    t = Spinbox(
-                        self.Options_Frame,
+                    spin = Spinbox(
+                        t,
                         background=self._apply_appearance_mode(("white", "gray60")),
                         foreground=self._apply_appearance_mode(("black", "black")),
                         buttonbackground=self._apply_appearance_mode(("white", "gray80")),
                         buttondownrelief="flat",
                         buttonuprelief="flat",
                         font=("Yu Gothic", 11, "bold"),
-                        width=12,
                         from_=0,
-                        to=10000,
+                        to=1000,
                         relief="flat",
-                        textvariable=var
+                        textvariable=var,
                     )
 
-                    t.grid(row=i, column=1, padx=[0, 10], pady=2, sticky=E)
-                    t.bind("<FocusOut>", lambda e,  option=option: self.Options_widgets[option][0].set(self.widget.cget(option)))
+                    spin.place(relx=0.05, y=3, relwidth=0.89)
+                    spin.bind("<FocusOut>", lambda e,  option=option: self.Options_widgets[option][0].set(self.widget.cget(option)))
                     
-                    self.Options_widgets[option].append(b)
-                    self.spin_widgets.append(t)
+                    self.spin_widgets.append(spin)
                     
             self.Options_widgets[option].append(t)
             self.cur_Options_list.append(option)
-    
-    def charge_code(self):
-        def create_children(parent, parent_name, children):
-            for widget, values in children.copy().items():
-                nom = values["nom"]
-                package = values["package"]
-                classe = values["classe"]
-                place_info = values["position"]
 
-                if widget == nom:
-                    widget = eval(values["package"]+"."+values["classe"])(parent)
+        Separator(
+            self.options_Frame._parent_frame,
+            orient=VERTICAL,
+            style="Line.TSeparator",
+        ).place(relx=0.945, y=0, relheight=1)
 
-                    self.modules_opts[package][1] += 1
-
-                    if values["package"]+"."+values["classe"] not in self.defauts:
-                        self.defauts[values["package"]+"."+values["classe"]] = {key: widget.cget(key) for key in widget.keys()}
-
-                    widget.config(**values["options"])
-
-                    items = list({key: str(widget.cget(key)) for key in set(widget.keys()).intersection(self.Options_widgets)}.items())
-                    items.sort(key=lambda x: x[0])
-                   
-                    widget.place(place_info)
-                    
-                    self.Tree.insert(parent, END, widget, image="Window", text=f" {nom}", tag=(nom, "widget"))
-                    
-                    if "state" in widget.keys(): widget.configure(state="disabled")
-                    if "disabledforeground" in widget.keys(): widget.configure(disabledforeground=widget["foreground"])
-                    if "disabledbackground" in widget.keys(): widget.configure(disabledbackground= widget["background"])
-                    
-                    children[widget] = children[nom]
-                    children[widget]["options"] = dict(items)
-                    children.pop(nom)
-                    
-                    self.all_children[widget] = children[widget]
-
-                    widget.bind("<Motion>", self.move_widget)
-                    widget.bind("<Button-1>", lambda e: self.select_widget(e.widget) if self.selected_widget.get() == "arrow" else self.create_widget(e))
-                    widget.bind("<ButtonRelease>", self.update_position_code)
-                    widget.bind("<Delete>", self.delete_widget)
-
-                items = {key: value for key, value in values["options"].items() if value and value != self.defauts[package+"."+classe][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}
-
-                index = self.code_Text.index(nom+".first") or self.limite[0]
-                
-                self.deleting = True
-                self.code_Text.delete(nom+".first", nom+".last")
-
-                text = ("\n\t\tself." if self.poo else "\n")+nom+" = "+package+"."+classe+(self.sep[0] if items else "(")+parent_name+(self.sep[1] if items else "")
-                text += self.sep[1].join([key+"="+str("\""+str(value)+"\"" if not (str(value).isnumeric() or str(value)[1:].isnumeric()) else value) for key, value in items.items() if value])+(self.sep[2] if items else ")")+"\n"+("\n" if items else "")
-     
-                self.highlighted_textbox.insert(index, text, tags=(nom, "widget"))
-                     
-                text = ("\t\tself." if self.poo else "")+nom+".place("
-                text += ", ".join([""+key+"="+str("\""+str(value)+"\"" if not str(value).isnumeric() else value) for key, value in place_info.items()])+")\n"
-
-                self.highlighted_textbox.insert(nom+".last", text, tags=(nom, nom+".pos", "widget"))
-
-                if not self.code_Text.get("import.first", "import.last").count(package):
-                    self.code_Text.insert("import.last -1 c", self.modules_opts[package][0] + "\n", tags=("import", f"{package}.import", "widget"))
-
-                self.limite = self.code_Text.index(f"{nom}.last"), nom
-
-                create_children(widget, ("self." if self.poo else "")+values["nom"], children[widget]["children"])
-
-        if not self.code_Text.index("import.first"):
-            self.code_Text.insert(END, "import tkinter as tk", tags=("import", "widget"))
-            self.code_Text.insert(END, "\n\n", tags="import")
-
-        items = self.widgets_list[self.fenetre]["options"]
-
-        nom = self.widgets_list[self.fenetre]["nom"]
-        classe = self.widgets_list[self.fenetre]["classe"]
-        package = self.widgets_list[self.fenetre]["package"]
-        geometry = self.widgets_list[self.fenetre]["geometry"]
-        titre = self.widgets_list[self.fenetre]["titre"]
-
-        items = {key: value for key, value in items.items() if value and value != self.defauts[package+"."+classe][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}
+        Separator(
+            self.options_Frame,
+            orient=VERTICAL,
+            style="Line.TSeparator",
+        ).grid(row=0, rowspan=i, column=0, padx=[125, 0], sticky=NS)
         
-        self.fenetre.title(titre)
-        self.fenetre.config(items)
-        self.fenetre.geometry(geometry)
-        
-        text = "  \n"+(("class "+nom+"("+package+"."+classe+"):\n") if self.poo else (nom+" = "+package+"."+classe+"()\n"))+ \
-        ("\tdef __init__(self):\n" if self.poo else "")+ \
-        ("\t\tsuper().__init__()\n\n" if self.poo else "")+ \
-        ("\t\tself" if self.poo else nom)+".title(\""+titre+"\")\n"+ \
-        ("\t\tself" if self.poo else nom)+".geometry(\""+geometry+"\")\n\n"+ \
-        ("\t\tself" if self.poo else nom)+".configure"+self.sep[0]+ \
-        self.sep[1].join([k+"="+str("\""+v+"\"" if not (v.isnumeric() or v[1:].isnumeric()) else v) for k, v in items.items() if v])+ \
-        self.sep[2]+"\n"
-        
-        if a := self.code_Text.tag_ranges(nom):
-            a, b = a
-            self.deleting = True
-            self.code_Text.delete(a, b)
-        else: a = END
-
-        self.code_Text.insert(a, text, tags=(nom, "widget"))
-        
-        if not self.code_Text.tag_ranges("user"): self.code_Text.insert(nom+".last", "\n\t\t\n", tags="user")
-
-        if a := self.code_Text.tag_ranges("run"):
-            a, b = a
-            self.deleting = True
-            self.code_Text.delete(a, b)
-        else: a = END
-
-        text = "\t\t\nif __name__ == \"__main__\":\n\t"+nom+("()" if self.poo else "")+".mainloop()\n\t"
-        
-        self.code_Text.insert(a, text, tags=("run", "widget"))
-        self.code_Text.insert("run.last", "", tags="end")
-
-        self.limite = self.code_Text.index(f"{nom}.last"), "Fenetre1"
-        
-        create_children(self.fenetre, "self" if self.poo else self.widgets_list[self.fenetre]["nom"], self.widgets_list[self.fenetre]["children"])
-        
-        self.code_Text._textbox.edit_reset()
-        self.update_options_Frame()
-
-        # Actualisation de la geometry
-        self.fenetre.bind("<Configure>", lambda e: (self.update_idletasks(), self.update_Options("geometry", self.fenetre.geometry())))
+        # Redonne la liberté au trace_add car l'assignation des variables est achevée
+        self.updating = False
     
     def create_widget(self, event): # Fonction pour ajouter le widget sélectionné à l'emplacemen du clic
-        widget_type = self.selected_widget.get()
+        classe = self.selected_widget.get()
         
-        if widget_type != "arrow" and not self.canvas.winfo_ismapped():
-            package = "tk" if self.tabview.get().strip() == "Tkinter" else self.tabview.get().strip().lower()
-            classe = widget_type
+        if classe != "arrow" and not self.canvas.winfo_ismapped():
+            package = self.tabview.get().strip() if self.tabview.get().strip() == "Pmw" else self.tabview.get().strip().lower()
             parent = event.widget.master if event.widget == self.canvas else event.widget
 
             x, y = event.x, event.y
-            widget = getattr(globals()[package], widget_type)(parent)
+            widget = eval(package+"."+classe)(parent) # = getattr(globals()[package], classe)(parent)
 
-            if package+"."+classe not in self.defauts:
-                self.defauts[package+"."+classe] = {key: widget.cget(key) for key in widget.keys()}
+            if package+"."+classe not in self.defauts: self.defauts[package+"."+classe] = {key: widget.cget(key) for key in widget.keys()}
             
-            nom = ("T" if package == "ttk" else "") + widget_type + \
-                str(max([int(v["nom"][len(("T" if package == "ttk" else "") + widget_type):] or 0) \
+            nom = ("T" if package == "ttk" else "") + classe + \
+                str(max([int(v["nom"][len(("T" if package == "ttk" else "") + classe):] or 0) \
                     for v in self.all_children.values() if v["classe"] == classe and v["package"] == package] or [0]) +1)
             
             self.modules_opts[package][1] += 1
 
             if "text" in widget.keys(): widget.configure(text=nom)
-            if "background" in widget.keys() and widget_type in ("Label", "Checkbutton", "Radiobutton"):
+            if "background" in widget.keys() and classe in ("Label", "Checkbutton", "Radiobutton"):
                 widget.configure(background=parent.cget("background"), foreground = "white" if parent.cget("background") == "black" or "gray" in parent.cget("background") else "black")
                 
             widget.place(x=x, y=y)
             
+            # self.Tree.insert(parent, END, widget, image=package.capitalize()+classe+"_ico", text=f" {nom}", tag=(nom, "widget"))
             self.Tree.insert(parent, END, widget, image="Window", text=f" {nom}", tag=(nom, "widget"))
+
 
             items = list({key: str(widget.cget(key)) for key in set(widget.keys()).intersection(self.Options_widgets)}.items())
             items.sort(key=lambda x: x[0])
 
-            if "state" in widget.keys(): widget.configure(state="disabled")
+            # if "state" in widget.keys() and classe in ("Entry", "Text", "Combobox"): widget.configure(state="disabled")
             if "disabledforeground" in widget.keys(): widget.configure(disabledforeground= widget["foreground"])
             if "disabledbackground" in widget.keys(): widget.configure(disabledbackground= widget["background"])
 
-            place_info = {key: value for key, value in widget.place_info().items() if key in "xywidthheight"}
-            place_info.update({"width": self.widget.winfo_width(), "height":self.widget.winfo_height()})
+            self.update_idletasks()
+            place_info = {key: value for key, value in widget.place_info().items() if key in "x y width height"}
+            place_info.update({"width": widget.winfo_width(), "height": widget.winfo_height()})
  
-            (self.widgets_list[self.fenetre] if parent == self.fenetre else self.all_children[parent])["children"][widget] = {
+            self.all_children[widget] = self.all_children[parent]["children"][widget] = {
                 "nom": nom,
-                "classe": widget_type,
+                "classe": classe,
                 "package": package,
                 "parent": parent,
                 "options": dict(items),
@@ -1037,12 +1251,11 @@ class TkGuiBuilder(customTk.CTk):
                 "position": place_info
                 }
             
-            self.all_children[widget] = (self.widgets_list[self.fenetre] if parent == self.fenetre else self.all_children[parent])["children"][widget]
-
-            parent = ("self" if self.poo else self.all_children[self.fenetre]["nom"]) if parent == self.fenetre else ("self." if self.poo else "")+self.all_children[parent]["nom"]
+    
             items = {key: value for key, value in items if value and value != self.defauts[package+"."+classe][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}.items()
+            parent_name = ("self" if self.poo else self.all_children[self.fenetre]["nom"]) if parent == self.fenetre else ("self." if self.poo else "")+self.all_children[parent]["nom"]
 
-            text = ("\n\t\tself." if self.poo else "\n")+nom+" = "+classe+(self.sep[0] if items else "(")+parent+(self.sep[1] if items else "")
+            text = ("\n\t\tself." if self.poo else "\n")+nom+" = "+(package+"." if package in ("ttk", "Pmw") else "")+classe+(self.sep[0] if items else "(")+parent_name+(self.sep[1] if items else "")
             text += self.sep[1].join([key+"="+str("\""+str(value)+"\"" if not ((value.isnumeric() or value[1:].isnumeric()) and int(value)) else value) for key, value in items if value])+(self.sep[2] if items else ")")+"\n"+("\n" if items else "")
             
             self.highlighted_textbox.insert(self.limite[0], text, tags=(nom, "widget"))
@@ -1062,7 +1275,7 @@ class TkGuiBuilder(customTk.CTk):
             self.update_idletasks()
             
             # Lier l'événement de déplacement du widget
-            widget.bind("<Motion>", self.move_widget)
+            widget.bind("<B1-Motion>", self.move_widget)
             widget.bind("<Button-1>", lambda e: self.select_widget(e.widget) if self.selected_widget.get() == "arrow" else self.create_widget(e))
             widget.bind("<ButtonRelease>", self.update_position_code)
             widget.bind("<Delete>", self.delete_widget)
@@ -1098,9 +1311,10 @@ class TkGuiBuilder(customTk.CTk):
         x, y, width, height = widget.winfo_x()-4, widget.winfo_y()-4, widget.winfo_width()+10, widget.winfo_height()+10
         
         self.canvas.configure(bg=widget.master["bg"])
-        self.canvas.itemconfig("canvas", outline=self.canvas["bg"], fill=self.canvas["bg"])
         self.canvas.place(in_=widget.master, x=-2, y=-2, relwidth=1.1, relheight=1.1)
-        self.canvas.coords("canvas", (0, 0, self.canvas["width"], self.canvas["height"]))
+
+        color = "black" if all([i >= 32896 for i in self.winfo_rgb(self.canvas["bg"])]) else "white"
+        self.canvas.itemconfigure("points", fill=color, outline=color)
         
         # Dessin du cadre entourant le widget
         self.canvas.coords("rectangle", (x, y, x+width, y+height))
@@ -1115,14 +1329,7 @@ class TkGuiBuilder(customTk.CTk):
         self.canvas.coords("point_SW", (x-2, y+height-2, x+2, y+height+2))
         self.canvas.coords("point_W", (x-2, y+(height/2)-2, x+2, y+(height/2)+2))
 
-        # Actualisation de l'affichage
-        self.update_idletasks()
-
-        try: 
-            if sum([n for i, n in self.modules_opts.values()]) > 1:
-                self.code_Text.yview_moveto(1)
-                self.code_Text.see(float(self.code_Text.index(f"{self.all_children[widget]['nom']}.first"))+10)
-        except: self.charge_code()
+        self.code_Text.see(float(self.code_Text.index(f"{self.all_children[widget]['nom']}.first"))+10)
         
         if not resizing and self.widget != widget:
             self.Tree.selection_set(widget)
@@ -1173,7 +1380,7 @@ class TkGuiBuilder(customTk.CTk):
             self.Options_widgets[option][0].set(options[option])
             self.updating = False
 
-        self.Options_Frame._parent_canvas.yview_moveto(0)
+        self.options_Frame._parent_canvas.yview_moveto(0)
 
     def update_Options(self, option, value):
         widget_opts_dict = self.all_children[self.widget]
@@ -1193,8 +1400,8 @@ class TkGuiBuilder(customTk.CTk):
 
                 self.fenetre.config(items)
                 items = {key: value for key, value in items.items() if value and value != self.defauts[package+"."+classe][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}
-                
-                text = "  \n"+(("class "+nom+"("+package+"."+classe+"):\n") if self.poo else (nom+" = "+package+"."+classe+"()\n"))+ \
+
+                text = "  \n"+(("class "+nom+"("+(package+"." if package in ("ttk", "Pmw") else "")+classe+"):\n") if self.poo else (nom+" = "+package+classe+"()\n"))+ \
                 ("\tdef __init__(self):\n" if self.poo else "")+ \
                 ("\t\tsuper().__init__()\n\n" if self.poo else "")+ \
                 ("\t\tself" if self.poo else nom)+".title(\""+titre+"\")\n"+ \
@@ -1209,14 +1416,16 @@ class TkGuiBuilder(customTk.CTk):
 
                 self.code_Text.insert(a, text, tags=(nom, "widget"))
                 return
-    
+            
             try:
-                if option == "foreground" and self.widget.cget("state") == "disabled":
-                    self.widget.config(disabledforeground=value)
+                if self.widget.cget("state") in "disabled":
+                    if option == "foreground": self.widget.configure(disabledforeground=value)
+                    elif option == "background" and "disabledbackground" in widget_opts_dict["options"]: self.widget.configure(disabledbackground=value)
             except: pass
 
-            if option != "disabledforeground" and ((option == "state" and value in "disabledactive") or option != "state"):
-                exec(f"self.widget.configure({option} = '{value}')")
+            if option not in ("disabledforeground", "disabledbackground") and ((option == "state" and value in "disabledactive") or option != "state"):
+                self.widget.configure({option: value})
+
             widget_opts_dict["options"][option] = str(value)
 
             self.update_idletasks()
@@ -1227,18 +1436,18 @@ class TkGuiBuilder(customTk.CTk):
             self.code_Text.delete(a, b)
 
             parent = widget_opts_dict["parent"]
-            parent = ("self" if parent == "self" or parent == self.widget_names[self.fenetre] else "self."+widget_opts_dict["parent"]) if self.poo else (self.widget_names[self.fenetre] if parent == "self" or parent == self.widget_names[self.fenetre] else widget_opts_dict["parent"])
-            
+            parent_name = parent = ("self" if self.poo else self.all_children[self.fenetre]["nom"]) if parent == self.fenetre else ("self." if self.poo else "")+self.all_children[parent]["nom"]
+
             items = {key: value for key, value in widget_opts_dict["options"].items() if value and value != self.defauts[widget_opts_dict["package"]+"."+widget_opts_dict["classe"]][key] and (str(value).isnumeric() and int(value) or not str(value).isnumeric())}
 
-            text = ("\n\t\tself." if self.poo else "\n")+widget_opts_dict["nom"]+" = "+widget_opts_dict["classe"]+(self.sep[0] if items else "")+parent+(self.sep[1] if items else "")
+            text = ("\n\t\tself." if self.poo else "\n")+widget_opts_dict["nom"]+" = "+(widget_opts_dict["package"]+"." if widget_opts_dict["package"] in ("ttk", "Pmw") else "")+widget_opts_dict["classe"]+(self.sep[0] if items else "")+parent_name+(self.sep[1] if items else "")
             text += self.sep[1].join([key+"="+("\""+str(value)+"\"" if not ((value.isnumeric() or value[1:].isnumeric()) and int(value)) else value) for key, value in items.items() if value])+(self.sep[2] if items else ")")+"\n"+("\n" if items else "")
             
             self.highlighted_textbox.insert(a, text, tags=("widget", widget_opts_dict["nom"]))
 
             self.limite = self.code_Text.index(f"{widget_opts_dict['nom']}.last"), widget_opts_dict["nom"]
 
-        except Exception as e: pass #print(option, "x :-->", value, "\n", e, file=sys.stderr)
+        except Exception as e: print(option, "x :-->", value, "\n", e, file=sys.stderr)
     
     def delete_widget(self, event): # Fonction pour supprimer le widget sélectionné
         if self.widget != self.fenetre:
@@ -1246,9 +1455,10 @@ class TkGuiBuilder(customTk.CTk):
                 # Suppression du texte correspondant
                 widget_opts_dict = self.all_children[self.widget]
                 package = widget_opts_dict["package"]
+                
+                self.modules_opts[package][1] -= 1
 
-                if package != "tk":
-                    self.modules_opts[package][1] -= 1
+                if package != "tkinter":
                     if not self.modules_opts[package][1]:
                         self.deleting = True
                         self.code_Text.delete(f"{package}.import.first", f"{package}.import.last")
@@ -1262,8 +1472,11 @@ class TkGuiBuilder(customTk.CTk):
                     self.code_Text.tag_delete(self.limite[1])
 
                 self.Tree.delete(self.widget)
+
+                # TO DO: Recursion delete
+                for widget in widget_opts_dict["children"]: widget.destroy()
                 
-                self.all_children[self.widget.master]["children"].pop(self.widget)
+                self.all_children[widget_opts_dict["parent"]]["children"].pop(self.widget)
                 self.all_children.pop(self.widget)
                 self.widget.destroy()
 
@@ -1276,42 +1489,45 @@ class TkGuiBuilder(customTk.CTk):
         else: self.bell()
 
     def resize_widget(self, event): # Rédimensionner le widget en maintenant le clic gauche de la souris
-        if self.widget != self.fenetre and self.resizing:
+        if self.widget != self.fenetre:
             delta_x, delta_y = event.x_root - self.start_x, event.y_root - self.start_y
 
-            if "E" in event.widget.gettags(CURRENT)[0]:
-                self.widget.place_configure(width=int(self.widget.winfo_width() + delta_x))
+            if abs(delta_x) >= 5 or abs(delta_y) >= 5:
 
-            elif "W" in event.widget.gettags(CURRENT)[0]:
-                #self.widget["width"] = int(self.widget["width"]) - delta_x1
-                self.widget.place_configure(x=self.widget.winfo_x() + delta_x, width=int(self.widget.winfo_width()) - delta_x)
+                if "E" in event.widget.gettags(CURRENT)[0]:
+                    self.widget.place_configure(width=int(self.widget.winfo_width() + delta_x))
 
-            if "S" in event.widget.gettags(CURRENT)[0]:
-                #self.widget["height"] = int(self.widget["height"]) + delta_y1
-                self.widget.place_configure(height=int(self.widget.winfo_height() + delta_y))
+                elif "W" in event.widget.gettags(CURRENT)[0]:
+                    self.widget.place_configure(x=self.widget.winfo_x() + delta_x, width=int(self.widget.winfo_width()) - delta_x)
 
-            elif "N" in event.widget.gettags(CURRENT)[0]:
-                #self.widget["height"] = int(self.widget["height"]) - delta_y1
-                self.widget.place_configure(y=self.widget.winfo_y() + delta_y, height=int(self.widget.winfo_height()) - delta_y)
+                if "S" in event.widget.gettags(CURRENT)[0]:
+                    self.widget.place_configure(height=int(self.widget.winfo_height() + delta_y))
 
-            # Enregistrement de la nouvelle position de la souris
-            self.start_x, self.start_y = self.winfo_pointerxy()
+                elif "N" in event.widget.gettags(CURRENT)[0]:
+                    self.widget.place_configure(y=self.widget.winfo_y() + delta_y, height=int(self.widget.winfo_height()) - delta_y)
 
-            # déplacer aussi le rectangle de rédimensionnement
-            self.select_widget(self.widget, True)
+                # Enregistrement de la nouvelle position de la souris
+                self.start_x, self.start_y = self.winfo_pointerxy()
+
+                # déplacer aussi le rectangle de rédimensionnement
+                self.update_idletasks()
+                self.select_widget(self.widget, True)
+                self.update_position_code(event)
    
     def move_widget(self, event): # Fonction déplacer le widget dans la fénêtre
-        if self.widget != self.fenetre and event.state == 256:
+        if self.widget != self.fenetre:
             delta_x, delta_y = event.x_root - self.start_x, event.y_root - self.start_y
-            
-            x, y = int(self.widget.place_info()["x"]) + delta_x, int(self.widget.place_info()["y"]) + delta_y
-            self.widget.place_configure(x=x, y=y)
 
-            # déplacer aussi le rectangle de redimensionnement
-            self.select_widget(self.widget, True)
+            if abs(delta_x) >= 5 or abs(delta_y) >= 5:
+                x, y = int(self.widget.place_info()["x"]) + delta_x, int(self.widget.place_info()["y"]) + delta_y
+                self.widget.place_configure(x=x, y=y)
 
-            # Enregistrement de la nouvelle position de la souris
-            self.start_x, self.start_y = self.winfo_pointerxy()
+                # déplacer aussi le rectangle de redimensionnement
+                self.update_idletasks()
+                self.select_widget(self.widget, True)
+
+                # Enregistrement de la nouvelle position de la souris
+                self.start_x, self.start_y = self.winfo_pointerxy()
 
     def update_position_code(self, e):
         try:
@@ -1319,7 +1535,7 @@ class TkGuiBuilder(customTk.CTk):
 
             place_info = {key: value for key, value in self.widget.place_info().items() if key in widget_opts_dict["position"].keys() and value}
             place_info.update({"width": self.widget.winfo_width(), "height":self.widget.winfo_height()})
-                
+
             a, b = self.code_Text.index(widget_opts_dict["nom"]+".pos.first"), self.code_Text.index(widget_opts_dict["nom"]+".pos.last")
             self.deleting = True
             self.code_Text.delete(a, b)
@@ -1328,38 +1544,48 @@ class TkGuiBuilder(customTk.CTk):
             text += ", ".join([""+key+"="+str("\""+str(value)+"\"" if not str(value).isnumeric() else value) for key, value in place_info.items()])+")\n"
 
             self.highlighted_textbox.insert(a, text, tags=("widget", widget_opts_dict["nom"], widget_opts_dict["nom"]+".pos"))
-                
+                    
             widget_opts_dict["position"] = place_info
-            self.limite = self.code_Text.index(f"{widget_opts_dict['nom']}.last"), widget_opts_dict["nom"]
-        
-        except: self.charge_code()   
+            self.limite = self.code_Text.index(f"{widget_opts_dict['nom']}.last"), widget_opts_dict["nom"] 
 
-    def toggle_resizing(self, e): # Active | Désactive le rédimensionnement
-        # Récupération de la position de la souris
-        self.start_x, self.start_y = self.winfo_pointerxy()
-
-        # Toggle resizing
-        self.resizing = not self.resizing 
+        except Exception as e: print(e, file=sys.stderr); self.charge_code()
 
     def key_combination(self, e):
         #print(f"{e.keysym = }, {e.state = }")
         if e.state == 4 and e.keysym == "s":  self.save_files()
 
+        if e.state == 4 and e.keysym == "o":  self.open_file()
+
         elif e.keysym == "F11": self.attributes("-fullscreen", not bool(self.attributes()[7]))
 
-        elif e.keysym == "F5": exec(self.code_Text.get(1.0, END))
+        elif e.keysym == "F5":
+            if self.file: self.save_files(); run_path(self.file[:-4]+".py", run_name="__main__")
+            else:
+                try: exec(self.code_Text.get(1.0, END))
+                except: self.charge_code(); exec(self.code_Text.get(1.0, END))
 
         elif e.keysym == "F10":
-            customTk.set_appearance_mode("dark" if self._get_appearance_mode() == "light" else "light")
+            set_appearance_mode("dark" if self._get_appearance_mode() == "light" else "light")
+            self.change_code_theme()
+
+            self.file_menu.configure(
+                background=self["background"],
+                foreground=self._apply_appearance_mode(("black", "white")),
+                activebackground=self._apply_appearance_mode(("gray60", "gray30")),
+            )
+
+            self.style.configure("Line.TSeparator", background=self._apply_appearance_mode(("gray90", "blac")))
+            self.code_Text._textbox.configure(selectbackground=self._apply_appearance_mode(("LightSkyBlue", "gray20")))
 
             self.V_Splitter["background"] = self._apply_appearance_mode(self._fg_color)
             self.H_Splitter["background"] = self._apply_appearance_mode(self._fg_color)
-            self.option_Window["background"] = self._apply_appearance_mode(self._fg_color)
+            self.panned_Window1["background"] = self._apply_appearance_mode(self._fg_color)
 
-            self.canvas.itemconfigure("points", fill=self._apply_appearance_mode(("black", "white")), outline=self._apply_appearance_mode(("black", "white")))
-            self.style.configure("Treeview", background=self._apply_appearance_mode(("gray90", "gray20")), foreground=self._apply_appearance_mode(("black", "white")))
+            color = "black" if all([i >= 32896 for i in self.winfo_rgb(self.canvas["bg"])]) else "white"
+            self.canvas.itemconfigure("points", fill=color, outline=color)
             self.canvas.configure(bg=self.canvas.master.cget("bg"))
-            self.canvas.itemconfig("canvas", outline=self.canvas["bg"], fill=self.canvas["bg"])
+
+            self.style.configure("Treeview", background=self._apply_appearance_mode(("gray90", "gray20")), foreground=self._apply_appearance_mode(("black", "white")))
 
             # self.code_Text.config(selectbackground=self._apply_appearance_mode(("LightSkyBlue", "gray40")))
             # self.code_Text.tag_configure(self.widgets_list[self.fenetre]["children"][self.widget]["nom"], background=self.code_Text._textbox["selectbackground"])
@@ -1370,8 +1596,6 @@ class TkGuiBuilder(customTk.CTk):
                     foreground=self._apply_appearance_mode(("black", "black")),
                     buttonbackground=self._apply_appearance_mode(("white", "gray80"))
                     )
-
-            self.change_code_theme()
 
     def change_code_theme(self):
         self.cdg.tagdefs['MYGROUP'] = {'foreground': self._apply_appearance_mode(('#7F7F7F', "gray60"))}
