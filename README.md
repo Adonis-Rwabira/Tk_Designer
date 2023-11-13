@@ -13,7 +13,7 @@
   />
 </picture>
 
-[Tk Designer Light mode](https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png)
+![Tk Designer Light mode](https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png)
 
 Tkinter Designer est un outil de conception d'interface graphique Python open source et gratuit. Il permet aux développeurs de créer des interfaces graphiques complexes et intuitives pour leurs applications Python de manière rapide et facile.
 
