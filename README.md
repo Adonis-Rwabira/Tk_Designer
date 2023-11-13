@@ -14,6 +14,24 @@ Voici quelques-uns des avantages de l'utilisation de Tkinter Designer :
 
 Si vous êtes un développeur Python et que vous recherchez un outil pour créer des interfaces graphiques rapidement et facilement, Tkinter Designer est un excellent choix.
 
+**FUTURS PLANS**
+Ce programme a été conçu initialement pour le module tkinter de Python, je prévois l'élargir à d'autres modules comme Kivy, PyQt, ... et d'autres langages comme HTML, Android/Java, C++, ...
+
+L'objectif : Offrir un outil qui permet de concevoir l'interface graphique sans code, muni aussi d'un éditeur de code pour taper le code du fonctionnent du programme en plus de celui qui a été généré automatiquement pour l'interface.
+
+C'est un peu comme Android Studio, NetBeans, m élargis à plusieurs langages, Le logiciel doit générer le code pour plusieurs langages d'une même interface.
+
+C'est encore une version beta.
+Il comporte deux thèmes Light/Dark, accessibles par la touche F10.
+Il est muni d'un débogueur pour analyser et exécuter le code Python dans l'éditeur. F5 pour exécuter.
+Il possède aussi une petite fenêtre pour afficher les messages d'erreurs et autres.
+
+Le projet peut être enregistrer sous 4 fichiers dont :
+    - Un fichier xml
+    - Un fichier json
+    - Un fichier python et
+    - Un fichier TkD : lisible uniquement par le programme pour restaurer le projet enregistrer.
+
 **Contact**:
 * **WhatsApp et Mobile**: +243 999 794 391 <br/>
 
