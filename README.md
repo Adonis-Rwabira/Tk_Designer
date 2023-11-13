@@ -13,6 +13,8 @@
   />
 </picture>
 
+[Tk Designer Light mode](https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png)
+
 Tkinter Designer est un outil de conception d'interface graphique Python open source et gratuit. Il permet aux développeurs de créer des interfaces graphiques complexes et intuitives pour leurs applications Python de manière rapide et facile.
 
 Tkinter Designer est un outil de conception graphique WYSIWYG (What You See Is What You Get). Cela signifie que les développeurs peuvent voir à quoi ressemblera leur interface graphique en temps réel, tout en la modifiant. Tkinter Designer propose une large gamme d'éléments d'interface graphique, tels que des boutons, des menus, des barres de défilement et des widgets personnalisés. Il permet également aux développeurs de créer des interfaces graphiques dynamiques et interactives.
