@@ -1,7 +1,7 @@
 # Tk Designer
 **Tkinter Designer : un outil professionnel pour créer des interfaces graphiques Python**
 
-![Image de Google]([https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png](https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png))
+![Image de Google](https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png)
 
 <picture>
   <source
