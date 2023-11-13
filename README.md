@@ -1,17 +1,15 @@
 # Tk Designer
 **Tkinter Designer : un outil professionnel pour créer des interfaces graphiques Python**
 
-![Image de Google](https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png)
-
 <picture>
   <source
-    srcset="https://user-images.githubusercontent.com/634063/202742848-63fa1488-6254-49b5-af7c-96a6b50ea8af.png"
+    srcset="https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201333.png"
     media="(prefers-color-scheme: dark)"
   />
   <img
     width="1072"
-    src="https://user-images.githubusercontent.com/634063/202742985-bb3b3b94-8aca-404a-8d8a-fd6a6f030672.png"
-    alt="A screenshot of the GitHub Desktop application showing changes being viewed and committed with two attributed co-authors"
+    src="https://github.com/Adonis-Rwabira/Tk_Designer/blob/main/Screenshot%202023-11-07%20201445.png"
+    alt="A screenshot of Tk Designer"
   />
 </picture>
 
