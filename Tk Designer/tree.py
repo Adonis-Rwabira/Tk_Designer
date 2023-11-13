@@ -15,18 +15,20 @@
 # - optimize tree redraw after expand of subnode
 
 import os
+import idlelib
 
 from tkinter import *
 from tkinter.ttk import Frame, Scrollbar
+from customtkinter import CTkLabel
 
 from idlelib.config import idleConf
 from idlelib import zoomheight
 
-ICONDIR = r"C:\Users\Windows 10 Pro\AppData\Local\Programs\Python\Python311\Lib\idlelib\Icons"
+ICONDIR = "Icons"
 
 # Look for Icons subdirectory in the same directory as this module
 try:
-    _icondir = os.path.join(os.path.dirname(__file__), ICONDIR)
+    _icondir = os.path.join(os.path.dirname(idlelib.__file__), ICONDIR)
 except NameError:
     _icondir = ICONDIR
 if os.path.isdir(_icondir):
@@ -258,7 +260,7 @@ class TreeNode:
         labeltext = self.item.GetLabelText()
         if labeltext:
             id = self.canvas.create_text(textx, texty, anchor="nw",
-                                         text=labeltext)
+                                         text=labeltext, fill=CTkLabel()._apply_appearance_mode(("black", "white")))
             self.canvas.tag_bind(id, "<1>", self.select)
             self.canvas.tag_bind(id, "<Double-1>", self.flip)
             x0, y0, x1, y1 = self.canvas.bbox(id)
@@ -274,12 +276,12 @@ class TreeNode:
             self.label
         except AttributeError:
             # padding carefully selected (on Windows) to match Entry widget:
-            self.label = Label(self.canvas, text=text, bd=0, padx=2, pady=2)
+            self.label = CTkLabel(self.canvas, text=text, padx=2, pady=2, fg_color=("gray95", "gray15"), text_color=("black", "white"))
         theme = idleConf.CurrentTheme()
-        if self.selected:
-            self.label.configure(idleConf.GetHighlight(theme, 'hilite'))
-        else:
-            self.label.configure(background=self.canvas.cget("bg"), foreground="white")
+        if self.selected:...
+            #self.label.configure(idleConf.GetHighlight(theme, 'hilite'))
+        else:...
+            #self.label.configure(background=self.canvas.cget("bg"), foreground="white")
         id = self.canvas.create_window(textx, texty,
                                        anchor="nw", window=self.label)
         self.label.bind("<1>", self.select_or_edit)
@@ -296,8 +298,8 @@ class TreeNode:
             self.select(event)
 
     def edit(self, event=None):
-        self.entry = Entry(self.label, bd=0, highlightthickness=1, width=0)
-        self.entry.insert(0, self.label['text'])
+        self.entry = Entry(self.label._label, bd=0, highlightthickness=1, width=0)
+        self.entry.insert(0, self.label.cget('text'))
         self.entry.selection_range(0, END)
         self.entry.pack(ipadx=5)
         self.entry.focus_set()
@@ -479,21 +481,3 @@ class ScrolledCanvas:
     def zoom_height(self, event):
         zoomheight.zoom_height(self.master)
         return "break"
-
-
-def _tree_widget(parent):  # htest #
-    top = Toplevel(parent)
-    x, y = map(int, parent.geometry().split('+')[1:])
-    top.geometry("+%d+%d" % (x+50, y+175))
-    sc = ScrolledCanvas(top, bg="white", highlightthickness=0, takefocus=1)
-    sc.frame.pack(expand=1, fill="both", side=LEFT)
-    item = FileTreeItem(ICONDIR)
-    node = TreeNode(sc.canvas, None, item)
-    node.expand()
-
-if __name__ == '__main__':
-    from unittest import main
-    main('idlelib.idle_test.test_tree', verbosity=2, exit=False)
-
-    from idlelib.idle_test.htest import run
-    run(_tree_widget)
