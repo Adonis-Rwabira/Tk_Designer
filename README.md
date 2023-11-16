@@ -42,12 +42,15 @@ Il possède aussi une petite fenêtre pour afficher les messages d'erreurs et au
 
 Le projet peut être enregistrer sous 4 fichiers dont :
     * **- Un fichier xml**
+    
     * **- Un fichier json**
+    
     * **- Un fichier python** et
+    
     * **- Un fichier TkD : lisible uniquement par le programme pour restaurer le projet enregistrer.**
 
 # Contact
-* **WhatsApp et Mobile**: +243 999 794 391 <br/>
+* **=WhatsApp et Mobile**: +243 999 794 391 <br/>
 
 * **Facebook**: *Adonis Rwabira / Adonis Bitigaywa*
 
