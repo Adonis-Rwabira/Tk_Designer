@@ -40,7 +40,7 @@ Il comporte deux thèmes **Light/Dark**, accessibles par la touche **F10**.
 Il est muni d'un **débogueur** pour **analyser** et **exécuter** le code Python dans l'éditeur. **F5 pour exécuter**.
 Il possède aussi une petite fenêtre pour afficher les messages d'erreurs et autres.
 
-Le projet peut être enregistrer sous 4 fichiers dont :
+Le projet peut être enregistré sous 4 fichiers dont :
 * **Un fichier xml**
     
 * **Un fichier json**
