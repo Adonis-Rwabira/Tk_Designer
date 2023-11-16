@@ -47,7 +47,7 @@ Le projet peut être enregistrer sous 4 fichiers dont :
     
 * **Un fichier python** et
     
-* **Un fichier TkD : lisible uniquement par le programme pour restaurer le projet enregistrer.**
+* **Un fichier TkD : lisible uniquement par le programme pour restaurer le projet enregistré.**
 
 # Contact
 * **WhatsApp et Mobile**: +243 999 794 391 <br/>
