@@ -41,13 +41,13 @@ Il est muni d'un **débogueur** pour **analyser** et **exécuter** le code Pytho
 Il possède aussi une petite fenêtre pour afficher les messages d'erreurs et autres.
 
 Le projet peut être enregistrer sous 4 fichiers dont :
-* **- Un fichier xml**
+* **Un fichier xml**
     
-* **- Un fichier json**
+* **Un fichier json**
     
-* **- Un fichier python** et
+* **Un fichier python** et
     
-* **- Un fichier TkD : lisible uniquement par le programme pour restaurer le projet enregistrer.**
+* **Un fichier TkD : lisible uniquement par le programme pour restaurer le projet enregistrer.**
 
 # Contact
 * **WhatsApp et Mobile**: +243 999 794 391 <br/>
